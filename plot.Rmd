@@ -1,0 +1,189 @@
+---
+author: "Chaomin Yuan"
+date: "October 17, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# loading package
+```{r}
+library(caret)
+library(mlbench)
+library(class)
+library(e1071)
+library(KernSmooth)
+```
+# loading propability 
+```{r}
+setwd("C:/Users/Chaomin/Desktop/master 1/STAT5003/play_ground")
+data <- read.csv("result_1.csv",header = TRUE)
+truth <- data$label
+```
+
+#knn
+```{r}
+knn_sen_result <- c()
+knn_spe_result <- c()
+knn_F1_result <- c()
+knn_AC_result <- c()
+
+knn.TP <- knn.TN <- knn.FP <- knn.FN <- c()
+
+
+x_knn <- seq(0,1,0.001)
+
+knn.prob <- data$knn_pro_0
+
+for ( i in 1:length(x_knn)) {
+
+knn.preds <-  ifelse(knn.prob >= x_knn[i], 1, 0)
+
+knn.TP <- c(knn.TP, sum((truth == knn.preds)[truth == "1"]))
+knn.TN <- c(knn.TN, sum((truth == knn.preds)[truth == "0"]))
+knn.FP <- c(knn.FP, sum((truth != knn.preds)[truth == "0"]))
+knn.FN <- c(knn.FN, sum((truth != knn.preds)[truth == "1"]))
+
+}
+```
+
+## knn_roc_curve
+
+```{r}
+knn_roc_data <- data.frame(knn.TP, knn.TN, knn.FP, knn.FN)
+knn_roc_data$Sen <- knn_roc_data$knn.TP/(knn_roc_data$knn.TP + knn_roc_data$knn.FN)
+knn_roc_data$Spe <- knn_roc_data$knn.TN/(knn_roc_data$knn.TN + knn_roc_data$knn.FP)
+
+#fit_knn <- locpoly((1-knn_roc_data$Spe), knn_roc_data$Sen, kernel = "normal", bandwidth = 0.035)
+#fit_knn.fn <- approxfun(fit_knn$x, fit_knn$y)
+
+plot((1 - knn_roc_data$Spe),knn_roc_data$Sen, type = "o", col = 'blue', lwd = 2,main ='group1: knn ROC curve', xlab = 'False positive rate ',ylab = 'True positive rate', ylim = seq(0,1), xlim = seq(0,1))
+lines(x_knn,x_knn, lwd = 2, lty = 2, col = rainbow(5))
+#lines(fit_knn, lwd = 2, col = 'lightpink')
+legend(0.5,0.4,c('knn roc curve AUC score = 0.36','smooth line of roc curve', 'random guess line: AUC score = 0.5'),box.lwd=0.001,lwd=2,lty = c(1,1,2),col = c('blue','lightpink','red'))
+
+ # mc.x_knn <- runif(10000, min=0.3, max=1)
+ # 
+ # max.y_knn <- max(fit_knn.fn(mc.x_knn))
+ # max.y_knn
+ # mc.y_knn <- runif(10000, min=0, max=max.y_knn)
+ # area.ratio_knn <- sum(mc.y_knn < fit_knn.fn(mc.x_knn)) / 10000
+ # auc_knn <- area.ratio_knn * 0.7 * max.y_knn
+ # auc_knn
+
+```
+
+##knn
+```{r}
+logit_sen_result <- c()
+logit_spe_result <- c()
+logit_F1_result <- c()
+logit_AC_result <- c()
+
+logit.TP <- logit.TN <- logit.FP <- logit.FN <- c()
+
+x_logit = seq(0,1,0.001)
+
+
+logit.predict <- data$logit_pro_0
+
+for (i in 1:length(x_logit)) { 
+logit.preds <- ifelse(logit.predict >= x_logit[i], 1, 0) #making predictions with logistic model
+logit.TP <- c(logit.TP, sum((truth == logit.preds)[truth == "1"]))
+logit.TN <- c(logit.TN, sum((truth == logit.preds)[truth == "0"]))
+logit.FP <- c(logit.FP, sum((truth != logit.preds)[truth == "0"]))
+logit.FN <- c(logit.FN, sum((truth != logit.preds)[truth == "1"]))
+}
+```
+
+
+## logit_roc_curve
+```{r}
+logit_roc_data <- data.frame(logit.TP, logit.TN, logit.FP, logit.FN)
+logit_roc_data$Sen <- logit_roc_data$logit.TP/(logit_roc_data$logit.TP + logit_roc_data$logit.FN)
+logit_roc_data$Spe <- logit_roc_data$logit.TN/(logit_roc_data$logit.TN + logit_roc_data$logit.FP)
+
+fit_logit_roc <- locpoly((1-logit_roc_data$Spe), logit_roc_data$Sen, kernel = "normal", bandwidth = 0.02)
+fit_logit_roc.fn <- approxfun(fit_logit_roc$x, fit_logit_roc$y)
+
+plot((1 - logit_roc_data$Spe),logit_roc_data$Sen, type = "o", col = 'blue', lwd = 2,main ='group1: logit ROC curve', xlab = 'False negtive rate ',ylab = 'True positive rate', ylim = seq(0,1), xlim = seq(0,1))
+lines(x_logit,x_logit, lwd = 2, lty = 2, col = rainbow(5))
+lines(fit_logit_roc, lwd = 2, col = 'lightpink')
+legend(0.5,0.4,c('knn roc curve AUC score = 0.641','smooth line of roc curve', 'random guess line: AUC score = 0.5'),box.lwd=0.001,lwd=2,lty = c(1,1,2),col = c('blue','lightpink','red'))
+
+mc.x_logit <- runif(10000, min=0.01, max=1)
+max.y_logit <- max(fit_logit_roc.fn(mc.x_logit))
+max.y_logit
+mc.y_logit <- runif(10000, min=0, max=max.y_logit)
+area.ratio_logit <- sum(mc.y_logit < fit_logit_roc.fn(mc.x_logit)) / 10000
+auc_logit <- area.ratio_logit * 1 * max.y_logit
+auc_logit
+
+```
+
+
+
+
+## lda
+```{r}
+lda_sen_result <- c()
+lda_spe_result <- c()
+lda_F1_result <- c()
+lda_AC_result <- c()
+
+lda.TP <- lda.TN <- lda.FP <- lda.FN <- c()
+
+x_lda = seq(0,1,0.001)
+
+
+lda.predict <- data$lda_pro_0
+
+for (i in 1:length(x_lda)) { 
+lda.preds <- ifelse(lda.predict >= x_lda[i], 1, 0) #making predictions with logistic model
+lda.TP <- c(lda.TP, sum((truth == lda.preds)[truth == "1"]))
+lda.TN <- c(lda.TN, sum((truth == lda.preds)[truth == "0"]))
+lda.FP <- c(lda.FP, sum((truth != lda.preds)[truth == "0"]))
+lda.FN <- c(lda.FN, sum((truth != lda.preds)[truth == "1"]))
+}
+```
+
+## lda roc curve
+
+```{r}
+lda_roc_data <- data.frame(lda.TP, lda.TN, lda.FP, lda.FN)
+lda_roc_data$Sen <- lda_roc_data$lda.TP/(lda_roc_data$lda.TP + lda_roc_data$lda.FN)
+lda_roc_data$Spe <- lda_roc_data$lda.TN/(lda_roc_data$lda.TN + lda_roc_data$lda.FP)
+
+fit_lda_roc <- locpoly((1-lda_roc_data$Spe), lda_roc_data$Sen, kernel = "normal", bandwidth = 0.02)
+fit_lda_roc.fn <- approxfun(fit_lda_roc$x, fit_lda_roc$y)
+
+plot((1 - lda_roc_data$Spe),lda_roc_data$Sen, type = "o", col = 'blue', lwd = 2,main ='group1: lda ROC curve', xlab = 'False negtive rate ',ylab = 'True positive rate', ylim = seq(0,1), xlim = seq(0,1))
+lines(x_lda,x_lda, lwd = 2, lty = 2, col = rainbow(5))
+lines(fit_lda_roc, lwd = 2, col = 'lightpink')
+legend(0.5,0.4,c('knn roc curve AUC score = 0.64','smooth line of roc curve', 'random guess line: AUC score = 0.5'),box.lwd=0.001,lwd=2,lty = c(1,1,2),col = c('blue','lightpink','red'))
+
+mc.x_lda <- runif(10000, min=0.01, max=1)
+max.y_lda <- max(fit_lda_roc.fn(mc.x_lda))
+max.y_lda
+mc.y_lda <- runif(10000, min=0, max=max.y_lda)
+area.ratio_lda <- sum(mc.y_lda < fit_lda_roc.fn(mc.x_lda)) / 10000
+auc_lda <- area.ratio_lda * 1 * max.y_lda
+auc_lda
+
+```
+
+
+## plot three curve together
+
+```{r}
+plot((1 - knn_roc_data$Spe),knn_roc_data$Sen, type = "o", col = 'blue', lwd = 2, ylim = seq(0,1), xlim = seq(0,1),axes = FALSE , xlab = '', ylab = '')
+par(new = TRUE)
+plot((1 - logit_roc_data$Spe),logit_roc_data$Sen, type = "o", col = 'green', lwd = 2, ylim = seq(0,1), xlim = seq(0,1),axes = FALSE,xlab = '', ylab = '')
+par(new = TRUE)
+plot((1 - lda_roc_data$Spe),lda_roc_data$Sen, type = "o", col = 'gold', lwd = 2, ylim = seq(0,1), xlim = seq(0,1), xlab = "False positive rate(fall-out score: 1- Specificity)", ylab = "True positive rate(Sensitive socre)", main = 'group1: Comparision between three classifier: based on ROC curve')
+lines(x_logit,x_logit, lwd = 2, lty = 2, col = rainbow(5))
+legend(0.4,0.3,c('logistic classifier:AUC score = 0.662','knn classifier: AUC score:0.36','lda classifier:AUC score = 0.45', 'random guess line: AUC score = 0.5'),box.lwd=0.001,lwd=2,lty = c(1,1,1,2),col = c('green','blue','gold', 'red'))
+
+```
